@@ -161,7 +161,11 @@ const timesText = (T) => [...new Set(T.times.map(([p, r]) => `준비 ${p}초 · 
 const frameHtml = (T) => `<dl class="frame">${T.frame.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>`;
 const tableHtml = (t) => `<figure class="sheet"><figcaption><b>${esc(t.title)}</b><span>${esc(t.sub)}</span></figcaption>
   <table>${t.rows.map(([a, b]) => `<tr><th>${esc(a)}</th><td>${esc(b)}</td></tr>`).join('')}</table></figure>`;
-const exprGroups = (id) => ['common', id].filter((g) => EXPR[g]);
+const COMMON = Object.keys(EXPR).filter((g) => EXPR[g].common);
+const exprRow = (g, done) => {
+  const G = EXPR[g], n = G.items.filter((e) => done.has(e.id)).length;
+  return `<li><a href="#/e/${g}/0"><span class="no">${n}/${G.items.length}</span><span><b>${G.name}</b><small>${esc(G.about)}</small></span></a></li>`;
+};
 
 function strip() {
   const cells = [], groups = [];
@@ -212,10 +216,10 @@ function home() {
     <section>
       <h2>표현 익히기</h2>
       <p class="lede">답변 틀의 빈칸을 채우는 표현이에요. 듣고, 따라 하고, 내 문장에 넣어 봐요.</p>
-      <ul class="rows">${Object.entries(EXPR).map(([g, G]) => {
-        const n = G.items.filter((e) => done.has(e.id)).length;
-        return `<li><a href="#/e/${g}/0"><span class="no">${n}/${G.items.length}</span><span><b>${G.name}</b><small>${esc(G.about)}</small></span></a></li>`;
-      }).join('')}</ul>
+      <h3>말 잇기 · 모든 유형</h3>
+      <ul class="rows">${COMMON.map((g) => exprRow(g, done)).join('')}</ul>
+      <h3>유형별</h3>
+      <ul class="rows">${Object.keys(EXPR).filter((g) => !EXPR[g].common).map((g) => exprRow(g, done)).join('')}</ul>
     </section>
     <section class="goal">
       <h2>목표</h2>
@@ -234,8 +238,9 @@ function typePage(id) {
     <header class="head"><p class="eyebrow">Question ${T.no}</p><h1>${T.name}</h1><p class="lede">${esc(T.about)}</p></header>
     <p class="facts"><span>${timesText(T)}${T.read ? ` · 자료 읽기 ${T.read}초` : ''}</span><span>평가: ${T.checks} (ETS 공개 기준)</span></p>
     <section><h2>${id === 'q12' ? '읽는 요령' : '답변 틀'}</h2>${frameHtml(T)}</section>
-    ${exprGroups(id).length ? `<section><h2>이 틀에 쓰는 표현</h2><ul class="rows">${exprGroups(id).map((g) =>
-      EXPR[g].items.map((e, i) => `<li><a href="#/e/${g}/${i}"><span class="en">${esc(e.phrase)}</span><small>${esc(e.slot)}</small></a></li>`).join('')).join('')}</ul></section>` : ''}
+    ${EXPR[id] ? `<section><h2>이 틀에 쓰는 표현</h2><ul class="rows">${EXPR[id].items.map((e, i) =>
+      `<li><a href="#/e/${id}/${i}"><span class="en">${esc(e.phrase)}</span><small>${esc(e.slot)}</small></a></li>`).join('')}</ul></section>` : ''}
+    ${id === 'q12' ? '' : `<section><h2>말 잇기 표현</h2><ul class="rows">${COMMON.map((g) => exprRow(g, new Set(saved('done', [])))).join('')}</ul></section>`}
     <section><h2>실전 시간으로 연습</h2><ul class="rows">${T.sets.map((s, i) =>
       `<li><a href="#/p/${id}/${i}"><span class="no">${i + 1}</span><span><b>세트 ${i + 1}</b><small>문항 ${T.times.length}개 · 자동 녹음</small></span></a></li>`).join('')}</ul></section>`;
 }
@@ -260,7 +265,8 @@ function practice(id, si) {
         <button class="primary start">시작하기</button>
       </div>
       <details class="hint"><summary>답변 틀 보기</summary>${frameHtml(T)}
-        ${exprGroups(id).map((g) => `<p class="phr">${EXPR[g].items.map((e) => esc(e.phrase)).join('<br>')}</p>`).join('')}</details>
+        ${EXPR[id] ? `<p class="phr">${EXPR[id].items.map((e) => esc(e.phrase)).join('<br>')}</p>` : ''}
+        ${id === 'q12' ? '' : `<p class="phr">${COMMON.map((g) => `<small>${EXPR[g].name}</small>${esc(EXPR[g].items[0].phrase)}`).join('')}</p>`}</details>
     </section>`;
   $('.start').onclick = () => runSet(id, T, set);
 }
@@ -327,7 +333,8 @@ function exprCard(g, i) {
   app.innerHTML = `
     <nav class="bar"><a href="#/">← 처음으로</a><span>${G.name} ${i + 1}/${G.items.length}</span></nav>
     <header class="head"><p class="eyebrow">${esc(e.slot)}</p><h1 class="en">${esc(e.phrase)}</h1>
-      <p class="lede">${esc(e.ko)}${done.has(e.id) ? ' <span class="badge">익힘</span>' : ''}</p></header>
+      <p class="lede">${esc(e.ko)}${done.has(e.id) ? ' <span class="badge">익힘</span>' : ''}</p>
+      ${e.tip ? `<p class="note">${esc(e.tip)}</p>` : ''}</header>
     <section class="step"><h2>듣고 따라 말하기</h2><p class="en line">${esc(e.say)}</p>
       <button class="ghost listen-say">듣기</button> <button class="primary repeat">따라 말하기</button><div class="out o1" aria-live="polite"></div></section>
     <section class="step"><h2>내 문장에 넣기</h2>
