@@ -1,7 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const { usesPattern } = require('./judge.js');
-const { TYPES, EXPR } = require('./data.js');
+const { TYPES } = require('./data.js');
+const { EXPR } = require('./expr.js');
 
 test('세트의 문항 수가 유형의 시간표와 맞는다', () => {
   for (const [id, t] of Object.entries(TYPES)) {
